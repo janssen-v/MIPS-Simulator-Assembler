@@ -2,4 +2,4 @@
 .vscode/launch.json
 .vscode/tasks.json
 modules/parser
-fib.asm
+modules/fib.asm
