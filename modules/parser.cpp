@@ -71,7 +71,12 @@ void scanFile(string inputFileName = ""){
 }
 
 void scanInstrType(){
-
+    vector<string>::iterator ptr = ASMBuffer.begin();
+    advance(ptr, textSection); // Advances pointer to first instruction under .text
+    while (ptr != ASMBuffer.end()){
+        // line by line (insert scan function here)
+        ++ptr;
+    }
 }
 
 void debug(){ // Check if buffer works properly
