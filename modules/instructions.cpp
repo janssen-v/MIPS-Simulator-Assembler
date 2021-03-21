@@ -3,7 +3,7 @@ using namespace std;
 
 
 // Instruction Opcode Map
-map<string, string> typeR_map{
+map<string, string> instrMap{
     {"add"    , "100000"},
     {"addu"   , "100001"},
     {"and"    , "100100"},
@@ -43,9 +43,7 @@ map<string, string> typeR_map{
     {"tge"    , "110000"},
     {"tgeu"   , "110001"},
     {"tne"    , "110110"},
-    {"teq"    , "110100"}
-};
-map<string, string> typeI_map{
+    {"teq"    , "110100"},
     {"addi"   , "001000"},
     {"addiu"  , "001001"},
     {"andi"   , "001100"},
@@ -81,9 +79,7 @@ map<string, string> typeI_map{
     {"tgei"   , "000001"},
     {"tgeiu"  , "000001"},
     {"tnei"   , "000001"},
-    {"teqi"   , "000001"}
-};
-map<string, string> typeJ_map {
+    {"teqi"   , "000001"},
     {"j"      , "000010"},
     {"jal"    , "000011"}
 };
