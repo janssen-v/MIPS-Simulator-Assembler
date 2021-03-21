@@ -1,11 +1,6 @@
 // Simulator
 
-#include <iostream>
-#include <cmath>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <algorithm>
+#include "libraries.h"
 
 using namespace std;
 
@@ -17,18 +12,38 @@ struct InstructionField{
     int funct;
 };
 
-struct MemoryElement{
+struct MemoryLabel{
     string label;
+    uint32_t address;    // Address that corresponds to label
+};
+
+struct Simulator{
+    // Main Memory
+    vector<int32_t> ram;
+    uint32_t pc;
+    uint32_t npc;
+    
+    // Processor Register
+    vector <int32_t> reg;
+    int32_t Hi;
+    int32_t Lo;
+};
+
+struct Register{        // Register Structure
     int32_t value;
 };
 
-struct Register{
-    int32_t value;
-};
-
-class Simulator{
+class Inst{
     private:
-        // Instructions
+
+        // ASM Program Data
+        int InstructionCount;
+        int ProgramCounter;
+        int ProgramLength;
+        bool HaltStatus;
+        
+
+        // Instruction Set
         void mips_add();
         void mips_addu();
         void mips_addi();
@@ -140,5 +155,23 @@ class Simulator{
         Register $gp;
         Register $sp;
         Register $fp;
-        Register $ra;
+        Register $ra;        
 };
+// Initialize Simulator
+void simInit(Simulator& sim){
+    sim.ram.resize(0x5B8D80); // 6MB of RAM initialised
+    sim.pc = 0x10000000;      // Start of text segment
+    sim.npc = 0x10000000+4;   // Next instruction pointer (increments by 4)
+    sim.reg.resize(32,0);     // 32 Registers
+    sim.Hi = 0;
+    sim.Lo = 0;
+}
+    
+
+
+
+int main(){
+    Simulator simulation;
+    simInit(simulation);
+    return 0;
+}
