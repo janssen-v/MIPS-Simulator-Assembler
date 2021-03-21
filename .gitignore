@@ -2,4 +2,7 @@
 .vscode/launch.json
 .vscode/tasks.json
 modules/parser
+modules/assembler
+modules/simulator
 modules/fib.asm
+sample.cpp
