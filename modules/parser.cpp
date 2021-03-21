@@ -5,21 +5,22 @@ using namespace std;
 
 // Global Variables
 vector<string> ASMStore;
-vector<MemoryLabel> LabelTable;
+vector<MemoryLabel> TextLabelTable;
+vector<MemoryLabel> DataLabelTable;
 
 int dataSection;
 int textSection;
 
-bool mainExists;
+int mainExists = 0;
 int mainIndex;      // Program counter should be set to main index if it exists
+int inTextSection = 0;
+int isLabelHeader = 0;
 
 
 // Functions
 void scanFile(string inputFileName = ""){
     string lineBuffer;
     ifstream inputFile;
-    bool inTextSection = 0;
-    bool isLabelHeader = 0;
 
     int lineCounter = 0;
 
@@ -31,38 +32,45 @@ void scanFile(string inputFileName = ""){
     
     while (getline(inputFile, lineBuffer)){
         isLabelHeader = 0;
+
         string::size_type pos = lineBuffer.find("#");
         if (pos != string::npos){
             lineBuffer = (lineBuffer.substr(0,pos));    // Splits string at position of # to remove comments
         }
 
-        if (lineBuffer.find("main")){
+        if (lineBuffer == ".data"){       // Marks first instruction of data and text section in ASMStore
+            isLabelHeader = 1;
+            inTextSection = 0;
+            dataSection = lineCounter;  
+        }
+        if (lineBuffer == ".text"){ 
+            isLabelHeader = 1;  
+            inTextSection = 1; 
+            textSection = lineCounter;
+        }
+
+        if (lineBuffer.find("main") != string::npos){
             mainExists = 1;
             mainIndex = lineCounter;    // Where the instructions under main start
         }
         
-        if (lineBuffer.find(":")){        // Stores location of function label
+        if (lineBuffer.find(":") != string::npos){        // Stores location of function label
             isLabelHeader = 1;
             MemoryLabel tempLabel;
             tempLabel.address = lineCounter;
             tempLabel.label = lineBuffer;
-            LabelTable.push_back(tempLabel);
+            if (inTextSection == 1){
+                TextLabelTable.push_back(tempLabel);
+            }
+            else DataLabelTable.push_back(tempLabel);
+            
         }
 
-        if (lineBuffer == ".data"){       // Marks first instruction of data and text section in ASMStore
-            dataSection = lineCounter;
-            isLabelHeader = 1; 
-        }
-        if (lineBuffer == ".text"){    
-            textSection = lineCounter;
-            isLabelHeader = 1;   
-            inTextSection = 1;
-        }
-
-        if (lineBuffer.size()>0 && isLabelHeader == 0){
+        if (lineBuffer.size()>0 && isLabelHeader != 1) {
             ASMStore.push_back(lineBuffer); // Assembly Buffer
             lineCounter += 1;
         }
+        
     }
 }
 
@@ -73,4 +81,15 @@ void debug_ASMBuffer(){ // Check if buffer works properly
     }
     cout << "Data Section is in ASMStore[" << dataSection << "] \n";
     cout << "Text Section is in ASMStore[" << textSection << "] \n"; 
+    cout << mainExists << " Main exists \n";
+    cout << mainIndex << " Main index \n";
+    cout << "First element of Textlabel table: " << TextLabelTable.front().label << "\n" ;
+    cout << " First element of Datalabel table: " << DataLabelTable.front().label << "\n";
 }
+
+/* [DEBUG] -> to check if parser module works
+int main(){
+    scanFile();
+    debug_ASMBuffer();
+}
+*/
