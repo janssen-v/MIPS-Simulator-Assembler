@@ -8,7 +8,7 @@
 #include <iterator>
 #include <map>
 #include <algorithm>
-
+#include <bitset>
 // C Libraries
 #include <cmath>
 #include <cstdlib>
