@@ -1,8 +1,12 @@
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <stdlib.h>
-#include <string.h>
-#include <queue>
+#include "libraries.h"
+#include "instructions.cpp"
+
+// External Maps
+extern map<string, string> typeR_map;
+extern map<string, string> typeI_map;
+extern map<string, string> typeJ_map;
+
+struct MemoryLabel{
+    string label;
+    int32_t address;
+};
