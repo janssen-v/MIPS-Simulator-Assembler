@@ -29,10 +29,6 @@ struct Simulator{
     int32_t Lo;
 };
 
-struct Register{        // Register Structure
-    int32_t value;
-};
-
 class Inst{
     private:
 
@@ -123,55 +119,56 @@ class Inst{
         void mips_mtlo();
         void mips_syscall();
 
-        // Registers
-        Register $zero;
-        Register $at;
-        Register $v0;
-        Register $v1;
-        Register $a0;
-        Register $a1;
-        Register $a2;
-        Register $a3;
-        Register $t0;
-        Register $t1;
-        Register $t2;
-        Register $t3;
-        Register $t4;
-        Register $t5;
-        Register $t6;
-        Register $t7;
-        Register $s0;
-        Register $s1;
-        Register $s2;
-        Register $s3;
-        Register $s4;
-        Register $s5;
-        Register $s6;
-        Register $s7;
-        Register $t8;
-        Register $t9;
-        Register $k0;
-        Register $k1;
-        Register $gp;
-        Register $sp;
-        Register $fp;
-        Register $ra;        
+        /*
+        // REGISTERS
+        $zero; sim.reg[0]
+        $at;   sim.reg[1]
+        $v0;   sim.reg[2]
+        $v1;   sim.reg[3]
+        $a0;   sim.reg[4]
+        $a1;   sim.reg[5]
+        $a2;   sim.reg[6]
+        $a3;   sim.reg[7]
+        $t0;   sim.reg[8]
+        $t1;   sim.reg[9]
+        $t2;   sim.reg[10]
+        $t3;   sim.reg[11]
+        $t4;   sim.reg[12]
+        $t5;   sim.reg[13]
+        $t6;   sim.reg[14]
+        $t7;   sim.reg[15]
+        $s0;   sim.reg[16]
+        $s1;   sim.reg[17]
+        $s2;   sim.reg[18]
+        $s3;   sim.reg[19]
+        $s4;   sim.reg[20]
+        $s5;   sim.reg[21]
+        $s6;   sim.reg[22]
+        $s7;   sim.reg[23]
+        $t8;   sim.reg[24]
+        $t9;   sim.reg[25]
+        $k0;   sim.reg[26]
+        $k1;   sim.reg[27]
+        $gp;   sim.reg[28]
+        $sp;   sim.reg[29]
+        $fp;   sim.reg[30]
+        $ra;   sim.reg[31]      
+        */  
 };
 // Initialize Simulator
 void simInit(Simulator& sim){
-    sim.ram.resize(0x5B8D80); // 6MB of RAM initialised
-    sim.pc = 0x10000000;      // Start of text segment
-    sim.npc = 0x10000000+4;   // Next instruction pointer (increments by 4)
-    sim.reg.resize(32,0);     // 32 Registers
+    sim.ram.resize(0x5B8D80);   // 6MB of RAM initialised
+    sim.pc = 0x400000;          // Start of text segment
+    sim.npc = 0x400000+4;       // Next instruction pointer (increments by 4)
+    sim.reg.resize(32,0);       // 32 Registers
     sim.Hi = 0;
     sim.Lo = 0;
 }
-    
 
-
-
-int main(){
+int main(int argc, char *argv[]){
     Simulator simulation;
     simInit(simulation);
     return 0;
 }
+
+//when data load into memory from asmstore, need to check type of data before loading memory to allocate blocks
