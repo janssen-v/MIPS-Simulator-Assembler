@@ -1,15 +1,254 @@
-// Assembles MIPS ASL to Machine Code
-
-#include "libraries.h"
-#include "parser.cpp"
-#include "instructions.cpp"
+// CPP Libraries
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <vector>
+#include <queue>
+#include <iterator>
+#include <map>
+#include <algorithm>
+#include <bitset>
+// C Libraries
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
 
 using namespace std;
 
+// Structures
+struct MemoryLabel{
+    string label;
+    int32_t address;
+};
+
 // Global Variables
 vector<string> instrStore;
+vector<string> ASMStore;
+vector<MemoryLabel> TextLabelTable;
+vector<MemoryLabel> DataLabelTable;
+int dataSection;
+int textSection;
 int instrIndex = 0;
+int mainExists = 0;
+int mainIndex;      // Program counter should be set to main index if it exists
+int inTextSection = 0;
+int isLabelHeader = 0;
 
+// Parser
+void scanFile(string inputFileName = ""){
+    string lineBuffer;
+    ifstream inputFile;
+
+    int lineCounter = 0;
+
+    if (inputFileName.empty()){
+        cout << "Input file: ";
+        cin >> inputFileName;
+        inputFile.open(inputFileName.c_str(), ifstream::in);
+    }
+    
+    while (getline(inputFile, lineBuffer)){
+        isLabelHeader = 0;
+
+        string::size_type pos = lineBuffer.find("#");
+        if (pos != string::npos){
+            lineBuffer = (lineBuffer.substr(0,pos));    // Splits string at position of # to remove comments
+        }
+
+        if (lineBuffer == ".data"){       // Marks first instruction of data and text section in ASMStore
+            isLabelHeader = 1;
+            inTextSection = 0;
+            dataSection = lineCounter;  
+        }
+        if (lineBuffer == ".text"){ 
+            isLabelHeader = 1;  
+            inTextSection = 1; 
+            textSection = lineCounter;
+        }
+
+        if (lineBuffer.find("main") != string::npos){
+            mainExists = 1;
+            mainIndex = lineCounter;    // Where the instructions under main start
+        }
+        
+        if (lineBuffer.find(":") != string::npos){        // Stores location of function label
+            isLabelHeader = 1;
+            MemoryLabel tempLabel;
+            tempLabel.address = lineCounter;
+            tempLabel.label = lineBuffer;
+            if (inTextSection == 1){
+                TextLabelTable.push_back(tempLabel);
+            }
+            else DataLabelTable.push_back(tempLabel);
+            
+        }
+
+        if (lineBuffer.size()>0 && isLabelHeader != 1) {
+            ASMStore.push_back(lineBuffer); // Assembly Buffer
+            lineCounter += 1;
+        }
+        
+    }
+}
+
+// Parser Debug
+void debug_ASMBuffer(){ // Check if buffer works properly
+    while (!(ASMStore.empty())){
+        cout << ASMStore.front() << '\n';
+        ASMStore.erase(ASMStore.begin());
+    }
+    cout << "Data Section is in ASMStore[" << dataSection << "] \n";
+    cout << "Text Section is in ASMStore[" << textSection << "] \n"; 
+    cout << mainExists << " Main exists \n";
+    cout << mainIndex << " Main index \n";
+    cout << "First element of Textlabel table: " << TextLabelTable.front().label << "\n" ;
+    cout << " First element of Datalabel table: " << DataLabelTable.front().label << "\n";
+}
+
+// Assembler
+
+// Instruction Opcode Map
+map<string, string> typeR_map{
+    {"add"    , "100000"},//
+    {"addu"   , "100001"},//
+    {"and"    , "100100"},//
+    {"div"    , "011010"},//
+    {"divu"   , "011011"},//
+    {"jalr"   , "001001"},//
+    {"jr"     , "001000"},//
+    {"mfhi"   , "010000"},//
+    {"mflo"   , "010010"},//
+    {"mthi"   , "010001"},//
+    {"mtlo"   , "010011"},//
+    {"mult"   , "011000"},//
+    {"multu"  , "011001"},//
+    {"nor"    , "100111"},//
+    {"or"     , "100101"},//
+    {"sll"    , "000000"},//
+    {"sllv"   , "000100"},//
+    {"slt"    , "101010"},//
+    {"sltu"   , "101011"},//
+    {"sra"    , "000011"},//
+    {"srav"   , "000111"},//
+    {"srl"    , "000010"},//
+    {"srlv"   , "000110"},//
+    {"sub"    , "100010"},//
+    {"subu"   , "100011"},//
+    {"syscall", "001100"},//
+    {"xor"    , "100110"},//
+    {"clo"    , "100001"},//
+    {"clz"    , "100000"},//
+    {"mul"    , "000010"},//
+    {"madd"   , "000000"},//
+    {"maddu"  , "000001"},//
+    {"msub"   , "000100"},//
+    {"msubu"  , "000101"},//
+    {"tlt"    , "110010"},//
+    {"tltu"   , "110011"},//
+    {"tge"    , "110000"},//
+    {"tgeu"   , "110001"},//
+    {"tne"    , "110110"},//
+    {"teq"    , "110100"} //
+};
+map<string, string> typeI_map{
+    {"addi"   , "001000"},//
+    {"addiu"  , "001001"},//
+    {"andi"   , "001100"},//
+    {"beq"    , "000100"},//
+    {"bgez"   , "000001"},//
+    {"bgezal" , "000001"},//
+    {"bgtz"   , "000111"},//
+    {"blez"   , "000110"},//
+    {"bltz"   , "000001"},//
+    {"bne"    , "000101"},//
+    {"lb"     , "100000"},//
+    {"lbu"    , "100100"},//
+    {"lh"     , "100001"},//
+    {"lhu"    , "100101"},//
+    {"lui"    , "001111"},//
+    {"lw"     , "100011"},//
+    {"ori"    , "001101"},//
+    {"sb"     , "101000"},//
+    {"slti"   , "001010"},//
+    {"sc"     , "111000"},//
+    {"sltiu"  , "001011"},//
+    {"sh"     , "101001"},//
+    {"sw"     , "101011"},//
+    {"xori"   , "001110"},//
+    {"tlti"   , "000001"},//
+    {"bltzal" , "000001"},//
+    {"swr"    , "101110"},//
+    {"swl"    , "101010"},//
+    {"ll"     , "110000"},//
+    {"tltiu"  , "000001"},//
+    {"lwr"    , "100110"},//
+    {"lwl"    , "100010"},//
+    {"tgei"   , "000001"},//
+    {"tgeiu"  , "000001"},//
+    {"tnei"   , "000001"},//
+    {"teqi"   , "000001"} //
+};
+map<string, string> typeJ_map {
+    {"j"      , "000010"},//
+    {"jal"    , "000011"},//
+    
+};
+
+map<string, string> registerMap {
+    {"$zero"  , "00000"},
+    {"$at"    , "00001"},
+    {"$v0"    , "00010"},
+    {"$v1"    , "00011"},
+    {"$a0"    , "00100"},
+    {"$a1"    , "00101"},
+    {"$a2"    , "00110"},
+    {"$a3"    , "00111"},
+    {"$t0"    , "01000"},
+    {"$t1"    , "01001"},
+    {"$t2"    , "01010"},
+    {"$t3"    , "01011"},
+    {"$t4"    , "01100"},
+    {"$t5"    , "01101"},
+    {"$t6"    , "01110"},
+    {"$t7"    , "01111"},
+    {"$s0"    , "10000"},
+    {"$s1"    , "10001"},
+    {"$s2"    , "10010"},
+    {"$s3"    , "10011"},
+    {"$s4"    , "10100"},
+    {"$s5"    , "10101"},
+    {"$s6"    , "10110"},
+    {"$s7"    , "10111"},
+    {"$t8"    , "11000"},
+    {"$t9"    , "11001"},
+    {"$k0"    , "11010"},
+    {"$k1"    , "11011"},
+    {"$gp"    , "11100"},
+    {"$sp"    , "11101"},
+    {"$fp"    , "11110"},
+    {"$ra"    , "11111"}
+};
+
+int getLabelAddr(string label){ // Check if works, otherwise replace with string
+    int rel_labelAddr;
+    int textStart = 0x0400000;
+    for (int i; i <= int(TextLabelTable.size()); i++){
+        if (TextLabelTable[i].label.find(label) != string::npos){
+            rel_labelAddr = ((TextLabelTable[i].address)*4); // -> address is line of code starting from 0    
+            int labelAddr = textStart + rel_labelAddr;
+            return labelAddr;
+            break;
+        }
+    }
+    return -1; // If not label or not found
+}
+
+string hex2Bin16(int hex){
+    bitset<16> b(hex);
+    return b.to_string();
+}
 
 // MIPS Instruction Field
 /*
@@ -34,25 +273,6 @@ int instrIndex = 0;
  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
  
 */
-
-int getLabelAddr(string label){ // Check if works, otherwise replace with string
-    int rel_labelAddr;
-    int textStart = 0x0400000;
-    for (int i; i <= int(TextLabelTable.size()); i++){
-        if (TextLabelTable[i].label.find(label) != string::npos){
-            rel_labelAddr = ((TextLabelTable[i].address)*4); // -> address is line of code starting from 0    
-            int labelAddr = textStart + rel_labelAddr;
-            return labelAddr;
-            break;
-        }
-    }
-    return -1; // If not label or not found
-}
-
-string hex2Bin16(int hex){
-    bitset<16> b(hex);
-    return b.to_string();
-}
 
 string mk_typeR(string op = "000000", string rs = "00000", string rt = "00000", string rd = "00000", string shamt = "00000", string funct = "000000"){
     //op = std::bitset<5>(shamt).to_string();
@@ -81,14 +301,13 @@ string mk_typeJ(string op = "000000", string addr = "00000000000000000000000000"
     return op + addr;
 };
 
-
 // Assemble tokens into machine code
 string assembleLine(vector<string> tokens){
     string MIPS_binary;
     string instr = tokens.at(0);
     string opcode;
     int opcode_int;
-
+    cout << "test" << '\n';
     if (typeR_map.count(instr)){
         opcode = typeR_map.find(instr)->second;
         opcode_int = stoi(opcode);

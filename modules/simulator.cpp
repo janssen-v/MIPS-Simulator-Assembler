@@ -158,8 +158,8 @@ class Inst{
 // Initialize Simulator
 void simInit(Simulator& sim){
     sim.ram.resize(0x5B8D80);   // 6MB of RAM initialised
-    sim.pc = 0x400000;          // Start of text segment
-    sim.npc = 0x400000+4;       // Next instruction pointer (increments by 4)
+    sim.pc = 0x0400000;          // Start of text segment
+    sim.npc = 0x0400000+4;       // Next instruction pointer (increments by 4)
     sim.reg.resize(32,0);       // 32 Registers
     sim.Hi = 0;
     sim.Lo = 0;
