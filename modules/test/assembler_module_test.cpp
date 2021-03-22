@@ -302,7 +302,6 @@ string assembleLine(vector<string> tokens){
     string instr = tokens.at(0);
     string opcode;
     int opcode_int;
-    cout << "test" << '\n';
     opcode = instrMap.find(instr)->second;
     opcode_int = stoi(opcode);
     
@@ -477,6 +476,7 @@ void assembleBuffer(){
         vector<string> tokens(begin, end);
         machineCode = assembleLine(tokens);
         instrStore.push_back(machineCode);
+        cout << instrStore.back() << '\n';
     }
 }
 
@@ -492,14 +492,16 @@ void debugMkInst(){
     cout << TEST_MIPS_binary.size() <<'\n';
 }
 
-void printMachineCode(){
-
+void printMachineCode(){ // Not working
+    for (int i; i <= int(instrStore.size()); i++){
+        cout << instrStore[i] << '\n';
+    }
 }
 
 int main(){
     scanFile();
-    //debug_ASMBuffer();
-    //assembleBuffer();
-    debugMkInst();
+    //debug_ASMBuffer(); // Only works if there is both data and text
+    assembleBuffer();
+    //debugMkInst();
     return 0;
 }
