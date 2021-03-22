@@ -7,3 +7,5 @@ modules/simulator
 modules/fib.asm
 sample.cpp
 modules/test/assembler_module_test
+release/simulator_module
+release/1.mips

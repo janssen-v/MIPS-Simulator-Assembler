@@ -23,6 +23,26 @@ struct MemoryLabel{
     int32_t address;
 };
 
+struct InstructionField{
+    int op;
+    int rs;
+    int rt;
+    int shamt;
+    int funct;
+};
+
+struct Simulator{
+    // Main Memory
+    vector<string> ram;
+    int pc;
+    int npc;
+    
+    // Processor Register
+    vector <int> reg;
+    int Hi;
+    int Lo;
+};
+
 // Global Variables
 vector<string> instrStore;
 vector<string> ASMStore;
@@ -235,7 +255,7 @@ map<string, string> registerMap {
 int getLabelAddr(string label){ // Check if works, otherwise replace with string
     int rel_labelAddr;
     int textStart = 0x0400000;
-    for (int i = 0; i < (TextLabelTable.size()); i++){  // iterator not working
+    for (int i = 0; i < int(TextLabelTable.size()); i++){  // iterator not working
         // cout << TextLabelTable[i].label <<'\n'; [For Debugging]
         if (TextLabelTable[i].label.find(label) != string::npos){
             rel_labelAddr = ((TextLabelTable[i].address)*4); // -> address is line of code starting from 0    
@@ -523,3 +543,62 @@ int main(){
 
 // TO-DO
 // Fix Jump and Branch instructions
+
+int main(int argc, char *argv[]){
+    // Assembler Module
+    if(argc != 2){ // If no file passed to program
+        scanFile();
+    }
+    else{
+        scanFile(argv[1]);
+    }
+    
+    assembleBuffer(); // Assembles MIPS ASM and stores to vector instrStore    
+    
+    // Initialize Simulation
+    Simulator sim;
+    sim.ram.resize(0x5B8D80);    // 6MB of RAM initialised
+    sim.pc = 0x0400000;          // Start of text segment
+    sim.npc = 0x0400000+4;       // Next instruction pointer (increments by 4)
+    sim.reg.resize(32,0);        // 32 Registers
+    sim.Hi = 0;
+    sim.Lo = 0;
+
+    // Load Instructions into Memory
+    int instEnd = 0;
+
+    for (int i = 0; i < int(instrStore.size()); i++){
+        int ramBeg = 0x0400000;
+        int ramPtr = (i*4);
+        int ramAddr = ramBeg + ramPtr;
+        sim.ram.at(ramAddr) = (instrStore[i]);
+        instEnd = ramAddr;
+    }
+
+    // Load Data Section
+    for (int j = 0; j < int(DataLabelTable.size()); j++){
+        int ramBeg = 0x0500000;
+        int ramPtr = (j*4);
+        sim.ram[ramBeg + ramPtr] = (DataLabelTable[j].label);
+    }
+
+    // Simulation cycle || Fetch, Decode, Execute
+
+    while (int(sim.pc) <= instEnd){
+        sim.reg.at(0) = 0; // Zero register always 0
+        // Fetch instruction from memory
+        string mCodeBuffer = sim.ram[sim.pc];
+
+        // Instruction Decode
+        string instrBuffer = mCodeBuffer;
+        
+        // Execute Instruction
+        cout << "execute instruction: " << instrBuffer << '\n';
+
+        sim.pc += 4;
+        if (sim.pc == instEnd){
+            break;
+        } 
+    }
+    return 0;
+}
