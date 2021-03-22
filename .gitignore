@@ -6,3 +6,4 @@ modules/assembler
 modules/simulator
 modules/fib.asm
 sample.cpp
+modules/test/assembler_module_test
