@@ -498,7 +498,7 @@ void printMachineCode(){
 
 int main(){
     scanFile();
-    debug_ASMBuffer();
+    //debug_ASMBuffer();
     //assembleBuffer();
     debugMkInst();
     return 0;
