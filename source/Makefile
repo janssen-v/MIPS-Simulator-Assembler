@@ -2,9 +2,9 @@ CXX = g++
 CXXFLAGS = -Wall -Werror -Wextra -pedantic -std=c++17 -g -fsanitize=address
 LDFLAGS =  -fsanitize=address
 
-SRC = 
+SRC = main.cpp
 OBJ = $(SRC:.cc=.o)
-EXEC = main
+EXEC = MIPS-Simulator
 
 all: $(EXEC)
 
