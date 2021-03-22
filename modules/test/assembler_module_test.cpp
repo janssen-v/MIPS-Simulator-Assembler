@@ -35,6 +35,8 @@ int mainExists = 0;
 int mainIndex;      // Program counter should be set to main index if it exists
 int inTextSection = 0;
 int isLabelHeader = 0;
+int textStart = 0x0400000;
+int dataStart = 0x0500000;
 
 // Parser
 void scanFile(string inputFileName = ""){
@@ -51,6 +53,7 @@ void scanFile(string inputFileName = ""){
     
     while (getline(inputFile, lineBuffer)){
         isLabelHeader = 0;
+        inTextSection = 1;
 
         string::size_type pos = lineBuffer.find("#");
         if (pos != string::npos){
@@ -76,6 +79,7 @@ void scanFile(string inputFileName = ""){
         if (lineBuffer.find(":") != string::npos){        // Stores location of function label
             isLabelHeader = 1;
             MemoryLabel tempLabel;
+            lineBuffer.erase(std::remove(lineBuffer.begin(), lineBuffer.end(),':'), lineBuffer.end()); // Remove ':'
             tempLabel.address = lineCounter;
             tempLabel.label = lineBuffer;
             if (inTextSection == 1){
@@ -86,6 +90,7 @@ void scanFile(string inputFileName = ""){
         }
 
         if (lineBuffer.size()>0 && isLabelHeader != 1) {
+            lineBuffer.erase(std::remove(lineBuffer.begin(), lineBuffer.end(),','), lineBuffer.end());
             ASMStore.push_back(lineBuffer); // Assembly Buffer
             lineCounter += 1;
         }
@@ -229,20 +234,15 @@ map<string, string> registerMap {
 int getLabelAddr(string label){ // Check if works, otherwise replace with string
     int rel_labelAddr;
     int textStart = 0x0400000;
-    for (int i; i <= int(TextLabelTable.size()); i++){
+    for (int i = 0; i < (TextLabelTable.size()); i++){  // iterator not working
+        // cout << TextLabelTable[i].label <<'\n'; [For Debugging]
         if (TextLabelTable[i].label.find(label) != string::npos){
             rel_labelAddr = ((TextLabelTable[i].address)*4); // -> address is line of code starting from 0    
             int labelAddr = textStart + rel_labelAddr;
             return labelAddr;
-            break;
         }
     }
     return -1; // If not label or not found
-}
-
-string hex2Bin16(int hex){
-    bitset<16> b(hex);
-    return b.to_string();
 }
 
 // MIPS Instruction Field
@@ -269,14 +269,16 @@ string hex2Bin16(int hex){
  
 */
 
-string mk_typeR(string op = "000000", string rs = "00000", string rt = "00000", string rd = "00000", string shamt = "00000", string funct = "000000"){
+string mk_typeR(string op, string rs, string rt, string rd, string shamt, string funct){
     //op = std::bitset<5>(shamt).to_string();
     string instr = instrMap.find(funct)->first;
     rs = registerMap.find(rs)->second;
     rt = registerMap.find(rt)->second;
     rd = registerMap.find(rd)->second;
+    if (rs.empty()) rs = "00000";
+    if (rt.empty()) rt = "00000";
+    if (rd.empty()) rd = "00000";
     shamt = std::bitset<5>(stoi(shamt)).to_string(); // shamt value change from int to 5 bit binary
-    instrIndex += 1;
     return op + rs + rt + rd + shamt + funct;
 };
 
@@ -286,14 +288,13 @@ string mk_typeI(string op, string rs, string rt, string addr){
     addr = std::bitset<16>(stoi(addr)).to_string();
     if (rs.empty()) rs = "00000";
     if (rt.empty()) rt = "00000";
-    instrIndex += 1;
     return op + rs + rt + addr;
 };
 
-string mk_typeJ(string op = "000000", string addr = "00000000000000000000000000"){
-    addr = std::bitset<26>(stoi(addr)).to_string();
-    instrIndex += 1;
-    return op + addr;
+string mk_typeJ(string op, string addr){
+    int tmp = stoi(addr);
+    string ad = std::bitset<26>(tmp).to_string();
+    return op + ad;
 };
 
 // Assemble tokens into machine code
@@ -367,12 +368,14 @@ string assembleLine(vector<string> tokens){
     else if (instr == "tge" || instr == "tgeu" || instr == "tlt" || instr == "tltu" || instr == "tne" || instr == "teq"){
         MIPS_binary = mk_typeR("000000", tokens[1], tokens[2], "00000", "00000", opcode);
     }
+    
+    // Type I Instructions
     // BEQ, BNE
     if (instr == "beq" || instr == "bne"){
         int tmp = getLabelAddr(tokens[3]);
         if (tmp != -1){ // If is label
             int relAddr = tmp - (0x0400000 + ((instrIndex)*4)+4); //Because 4 byte blocks
-            MIPS_binary = mk_typeI(opcode, tokens[1], tokens[2], hex2Bin16(relAddr/4));
+            MIPS_binary = mk_typeI(opcode, tokens[1], tokens[2], to_string(relAddr/4));
         }
         else{
             MIPS_binary = mk_typeI(opcode, tokens[1], tokens[2], tokens[3]);
@@ -381,9 +384,10 @@ string assembleLine(vector<string> tokens){
     // BLEZ, BGTZ
     else if (instr == "blez" || instr == "bgtz"){
         int tmp = getLabelAddr(tokens[2]);
+        //cout << tmp << '\n'; // Debug line
         if (tmp != -1){ // If is label
             int relAddr = tmp - (0x0400000 + ((instrIndex)*4)+4); //Because 4 byte blocks
-            MIPS_binary = mk_typeI(opcode, tokens[1], "00000", hex2Bin16(relAddr/4));
+            MIPS_binary = mk_typeI(opcode, tokens[1], "00000", to_string(relAddr/4));
         }
         else{
             MIPS_binary = mk_typeI(opcode, tokens[1], "00000", tokens[2]);
@@ -409,10 +413,10 @@ string assembleLine(vector<string> tokens){
         int tmp = getLabelAddr(tokens[2]);
         if (tmp != -1){ // If is label
             int relAddr = tmp - (0x0400000 + ((instrIndex)*4)+4); //Because 4 byte blocks
-            if      (instr == "bgez")   MIPS_binary = mk_typeI(opcode, tokens[1], "00001", hex2Bin16(relAddr/4));
-            else if (instr == "bgezal") MIPS_binary = mk_typeI(opcode, tokens[1], "10001", hex2Bin16(relAddr/4));
-            else if (instr == "bltzal") MIPS_binary = mk_typeI(opcode, tokens[1], "10000", hex2Bin16(relAddr/4));
-            else if (instr == "bltz")   MIPS_binary = mk_typeI(opcode, tokens[1], "00000", hex2Bin16(relAddr/4));            
+            if      (instr == "bgez")   MIPS_binary = mk_typeI(opcode, tokens[1], "00001", to_string(relAddr/4));
+            else if (instr == "bgezal") MIPS_binary = mk_typeI(opcode, tokens[1], "10001", to_string(relAddr/4));
+            else if (instr == "bltzal") MIPS_binary = mk_typeI(opcode, tokens[1], "10000", to_string(relAddr/4));
+            else if (instr == "bltz")   MIPS_binary = mk_typeI(opcode, tokens[1], "00000", to_string(relAddr/4));            
         }
         else{
             if      (instr == "bgez")   MIPS_binary = mk_typeI(opcode, tokens[1], "00001", tokens[2]);
@@ -445,6 +449,7 @@ string assembleLine(vector<string> tokens){
     else if (instr == "teqi"){
         MIPS_binary = mk_typeI(opcode, tokens[1], "01100", tokens[2]);
     }
+    // Type J Instructions
     // J
     else if (instr == "j"){
         int tmp = getLabelAddr(tokens[1]);
@@ -459,6 +464,7 @@ string assembleLine(vector<string> tokens){
             MIPS_binary = mk_typeJ(opcode, to_string(tmp>>2));
         }
     }
+    instrIndex++;
     return MIPS_binary;
 }
 
@@ -470,6 +476,7 @@ void assembleBuffer(){
     
     for (int ptr = textSection; ptr< int(ASMStore.size()); ptr++){ // Iterates line by line starting from .text section
         lineBuffer = ASMStore.at(ptr);
+        //lineBuffer.erase(std::remove(lineBuffer.begin(), lineBuffer.end(),','), lineBuffer.end()); // Remove commas
         stringstream instrStream(lineBuffer); // Tokenizes the instruction line
         istream_iterator<string> begin(instrStream);
         istream_iterator<string> end;
@@ -498,10 +505,19 @@ void printMachineCode(){ // Not working
     }
 }
 
+void debugTextLabelTable(){
+    cout << "Text Label Table Size: " << TextLabelTable.size() << '\n';
+    cout << TextLabelTable[0].label << '\n';
+}
+
 int main(){
     scanFile();
     //debug_ASMBuffer(); // Only works if there is both data and text
+    //debugTextLabelTable();
     assembleBuffer();
     //debugMkInst();
     return 0;
 }
+
+// TO-DO
+// Fix Jump and Branch instructions
